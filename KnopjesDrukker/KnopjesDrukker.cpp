@@ -3,7 +3,7 @@
 
 #include "stdafx.h"
 #include <Windows.h>
-
+#include <math.h>
 #include <gdiplus.h>
 
 using namespace Gdiplus;
@@ -76,6 +76,8 @@ struct Sprite
 		GdiplusStartup(&token, &GdiplusStartupInput(), &GdiplusStartupOutput());
 
 	}
+	float sx, sy;
+	float tijd = 0;
 	void WindowsBerichtje(UINT Msg, WPARAM wParam, LPARAM lParam)
 	/*
 		Hier komen de berichtjes van Windows voor deze sprite binnen
@@ -111,9 +113,37 @@ struct Sprite
 			/*
 				Dan gaan we hier lekker tekenen
 			*/
+
+			/* 
+				Eerst zorgen we er voor dat het plaatje zo gedraaid gaat worden
+				dat we naar de muis kijken
+			*/
+			PenVoorPlaatje->TranslateTransform(128, 128);
+			int mx, my;
+			WaarIsDeMuis(mx, my);
+			float Hoek = atan2(my - sy- 128, mx - sx - 128);
+			PenVoorPlaatje->RotateTransform(180 * Hoek / 3.141592653);
+			PenVoorPlaatje->TranslateTransform(-128, -128);
+
+			/*
+				We doen er een beetje tijd bij, daarmee laten we de voetjes bewegen
+			*/
+			tijd += 0.1;
+
+			/*
+				Maak alles zwart (doorzichtig)
+			*/
 			PenVoorPlaatje->Clear(Color::Black);
-			PenVoorPlaatje->FillEllipse(&SolidBrush(Color::White), 10, 10, 236, 236);
-			PenVoorPlaatje->FillEllipse(&SolidBrush(Color::Black), 30, 30, 196, 196);
+			// Voetjes
+			PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Blue), 128 - 5 + 5 * sin(tijd), 128 - 10, 10, 10);
+			PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Blue), 128 - 5 - 5 * sin(tijd), 128, 10, 10);
+			// Lichaam
+			PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 128 - 5, 128 - 10, 10, 20);
+			// Armen
+			PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 128 - 5, 128 - 20, 30, 10);
+			PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 128 - 5, 128 + 10, 30, 10);
+			// Hoofd
+			PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Brown), 128 - 5, 128 - 7.5, 15, 15);
 
 			/*
 				Hier kopieren we het plaatje naar het velletje
@@ -143,7 +173,7 @@ struct Sprite
 			sla de naam op in hWnd
 		*/
 		hWnd = CreateWindowEx(
-			WS_EX_LAYERED, L"DoorzichtigSchermKlasse",
+			WS_EX_LAYERED|WS_EX_TOPMOST, L"DoorzichtigSchermKlasse",
 			L"DoorzichtigScherm",
 			WS_VISIBLE | WS_POPUP,
 			0, 0, 256, 256, nullptr, nullptr, nullptr, this);
@@ -155,7 +185,7 @@ struct Sprite
 		*/
 		SetLayeredWindowAttributes(hWnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
 	}
-	void BeweegScherm(int x, int y)
+	void BeweegSprite(int x, int y)
 	/*
 		Hiermee kunnen we de Sprite verplaatsen
 	*/
@@ -181,11 +211,39 @@ struct Sprite
 		x = p.x;
 		y = p.y;
 	}
+	void DenkNa()
+	/*
+		Laat hier je Sprite nadenken en bewegen
+	*/
+	{
+		int mx, my;
+		/* Vraag waar de muis is, dit wordt ingevuld in mx en my */
+		Sprite::WaarIsDeMuis(mx, my);
+		
+		/* bepaal welke kant we op moeten kijken */
+		float dx = mx - sx - 128;
+		float dy = my - sy - 128;
+		float n = sqrt(dx * dx + dy * dy);
+
+		dx /= n;
+		dy /= n;
+
+		/* Doe een stapje in de richting van de muis */
+		sx += dx;
+		sy += dy;
+		/* Zet de Sprite op de plek die we net hebben bepaald */
+		BeweegSprite(sx, sy);
+		/* Teken de Sprite opnieuw, dat is nu niet nodig, maar dan kunnen we het even uitproberen */
+		NieuwPlaatje();
+
+	}
 };
 #include <math.h>
+#include <list>
 
 int main()
 {
+	printf("Sluit dit scherm om af te sluiten\n");
 	/*
 		Doe de voorbereidingen die nodig zijn...
 	*/
@@ -194,10 +252,15 @@ int main()
 	/*
 		Maak een sprite aan
 	*/
-	Sprite scherm;
+	std::list<Sprite*> sprites;
+	for (int cx = 0; cx < 10; cx++)
+	{
+		Sprite *nieuwe_sprite = new Sprite;
+		nieuwe_sprite->sx = rand() & 1023;
+		nieuwe_sprite->sy = rand() & 1023;
+		sprites.push_back(nieuwe_sprite);
+	}
 
-	/* In x en y houden we de positie van de sprite bij */
-	int x = -256, y = 0;
 	while (1)
 	{
 		/*
@@ -212,22 +275,19 @@ int main()
 			DispatchMessage(&msg);
 		}
 
-
-		int mx, my;
-		/* Vraag waar de muis is, dit wordt ingevuld in mx en my */
-		Sprite::WaarIsDeMuis(mx, my);
-
-		/* Als de muis mx hoger is dan x, verhoog dan x, anders verlagen we x */
-		if (mx > x + 128) x++; else x--;
-		/* En we doen het zelfde voor y */
-		if (my > y + 128) y++; else y--;
-		/* Zet de Sprite op de plek die we net hebben bepaald */
-		scherm.BeweegScherm(x, y);
-		/* Wacht even */
-		Sleep(10);
-		/* Teken de Sprite opnieuw, dat is nu niet nodig, maar dan kunnen we het even uitproberen */
-		scherm.NieuwPlaatje();
+		for (Sprite *sprite : sprites)
+			/* Doe voor alle sprites */
+		{
+			sprite->DenkNa();
+		}
+		Sleep(50);
 	}
+	/*
+		Aan het eind van ons programma, moeten we netjes onze zooi opruimen
+	*/
+	for (Sprite *sprite : sprites)
+		delete sprite;
+
     return 0;
 }
 
