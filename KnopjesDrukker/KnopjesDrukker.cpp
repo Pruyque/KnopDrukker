@@ -22,7 +22,9 @@ void WaarIsDeMuis(int &x, int &y)
 
 #pragma comment(lib, "gdiplus")
 struct Sprite
-	/* Dit wordt onze sprite
+	/* Dit wordt is een sprite.
+		De dingen die we gaan tekenen zijn allemaal sprites (net als bij Scratch)
+		Hierin doen we alle dingen die sprites moeten kunnen.
 	*/
 {
 	// Dit is de naam van het schermpje waar we in tekenen
@@ -88,63 +90,15 @@ struct Sprite
 		GdiplusStartup(&token, &GdiplusStartupInput(), &GdiplusStartupOutput());
 
 	}
+
+	/*
+		sx en sy zijn de positie van de sprite
+	*/
 	float sx, sy;
-	float tijd = 0;
-	virtual void TekenDeSprite(Graphics *PenVoorVelletje)
-	{
-		/*
-			We maken zelf nog een plaatje aan, daar gaan we dan op tekenen.
-			Als we klaar zijn met tekenen, kopieeren we hem naar het velletje
-			dat we van Windows hebben gekregen.
-			Als je rechtstreeks op het velletje van Windows tekent, teken je
-			op het beeldscherm en zie je dingen knipperen...
-		*/
-		Bitmap plaatje(64, 64);
-		Graphics *PenVoorPlaatje = Graphics::FromImage(&plaatje);
-
-
-		/*
-			Dan gaan we hier lekker tekenen
-		*/
-
-		/*
-			Eerst zorgen we er voor dat het plaatje zo gedraaid gaat worden
-			dat we naar de muis kijken
-		*/
-		PenVoorPlaatje->TranslateTransform(32, 32);
-		int mx, my;
-		WaarIsDeMuis(mx, my);
-		float Hoek = atan2(my - sy, mx - sx);
-		PenVoorPlaatje->RotateTransform(180 * Hoek / 3.141592653);
-		PenVoorPlaatje->TranslateTransform(-32, -32);
-
-		/*
-			We doen er een beetje tijd bij, daarmee laten we de voetjes bewegen
-		*/
-		tijd += 0.1;
-
-		/*
-			Maak alles zwart (doorzichtig)
-		*/
-		PenVoorPlaatje->Clear(Color::Black);
-		// Voetjes
-		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Blue), 32 - 5 + 5 * sin(tijd), 32 - 10, 10, 10);
-		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Blue), 32 - 5 - 5 * sin(tijd), 32, 10, 10);
-		// Lichaam
-		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 5, 32 - 10, 10, 20);
-		// Armen
-		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 5, 32 - 20, 30, 10);
-		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 5, 32 + 10, 30, 10);
-		// Hoofd
-		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Brown), 32 - 5, 32 - 7.5, 15, 15);
-
-		/*
-			Hier kopieren we het plaatje naar het velletje
-		*/
-		PenVoorVelletje->DrawImage(&plaatje, 0, 0);
-		delete PenVoorPlaatje;
-
-	}
+	/*
+		kx en ky zijn het punt waar de sprite naar moet kijken
+	*/
+	float kx, ky;
 	void WindowsBerichtje(UINT Msg, WPARAM wParam, LPARAM lParam)
 	/*
 		Hier komen de berichtjes van Windows voor deze sprite binnen
@@ -165,7 +119,35 @@ struct Sprite
 			*/
 			HDC velletje = BeginPaint(hWnd, &paint);
 			Graphics *PenVoorVelletje = Graphics::FromHDC(velletje);
-			TekenDeSprite(PenVoorVelletje); // Teken de sprite met de pen voor het velletje
+
+			/*
+				We maken zelf nog een plaatje aan, daar gaan we dan op tekenen.
+				Als we klaar zijn met tekenen, kopieeren we hem naar het velletje
+				dat we van Windows hebben gekregen.
+				Als je rechtstreeks op het velletje van Windows tekent, teken je
+				op het beeldscherm en zie je dingen knipperen...
+			*/
+			Bitmap plaatje(64, 64);
+			Graphics *PenVoorPlaatje = Graphics::FromImage(&plaatje);
+
+			/*
+				Eerst zorgen we er voor dat het plaatje zo gedraaid gaat worden
+				dat we naar de muis kijken
+			*/
+			PenVoorPlaatje->TranslateTransform(32, 32);
+			float Hoek = atan2(ky - sy, kx - sx);
+			PenVoorPlaatje->RotateTransform(180 * Hoek / 3.141592653);
+			PenVoorPlaatje->TranslateTransform(-32, -32);
+
+
+			TekenDeSprite(PenVoorPlaatje); // Teken de sprite met de pen voor het velletje
+
+			/*
+				Hier kopieren we het plaatje naar het velletje
+			*/
+			PenVoorVelletje->DrawImage(&plaatje, 0, 0);
+			delete PenVoorPlaatje;
+
 			/*
 				Vertel Windows dat we klaar zijn
 			*/
@@ -225,22 +207,88 @@ struct Sprite
 	{
 		InvalidateRect(hWnd, nullptr, FALSE);
 	}
-	virtual bool DenkNa()
+
+
+	/* 
+		De volgende functies, met = 0 erachter betekenen dat alle sprites
+		dit moeten kunnen, maar verschillende soorten sprites (zombies, skeletten etc)
+		doen dit allemaal anders
+	*/
+	virtual bool DenkNa() = 0;
 	/*
 		Laat hier je Sprite nadenken en bewegen.
 		Geef 'true' terug als deze sprite moet blijven bestaan.
 		Als je 'false' terug geeft, wordt-ie weggegooid
 	*/
+	virtual void TekenDeSprite(Graphics *PenVoorVelletje) = 0;
+	/*
+	We maken zelf nog een plaatje aan, daar gaan we dan op tekenen.
+	Als we klaar zijn met tekenen, kopieeren we hem naar het velletje
+	dat we van Windows hebben gekregen.
+	Als je rechtstreeks op het velletje van Windows tekent, teken je
+	op het beeldscherm en zie je dingen knipperen...
+	*/
+};
+
+std::vector<Sprite*> sprites;
+
+
+float AfstandTussenSprites(Sprite *sprite1, Sprite *sprite2)
+{
+	return sqrtf(pow(sprite1->sx - sprite2->sx, 2) + pow(sprite1->sy - sprite2->sy, 2));
+}
+
+
+struct Zombie : public Sprite
+{
+	/* 
+		We houden een tijd bij voor een zombie, zodat we de voetjes kunnen laten bewegen
+	*/
+	float tijd = 0;
+	virtual void TekenDeSprite(Graphics *PenVoorPlaatje) 
+	{
+		/*
+			Dan gaan we hier lekker tekenen
+		*/
+
+		/*
+			We doen er een beetje tijd bij, daarmee laten we de voetjes bewegen
+		*/
+		tijd += 0.1;
+
+		/*
+			Maak alles zwart (doorzichtig)
+		*/
+		PenVoorPlaatje->Clear(Color::Black);
+		// Voetjes
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Blue), 32 - 5 + 5 * sin(tijd), 32 - 10, 10, 10);
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Blue), 32 - 5 - 5 * sin(tijd), 32, 10, 10);
+		// Lichaam
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 5, 32 - 10, 10, 20);
+		// Armen
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 5, 32 - 20, 30, 10);
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 5, 32 + 10, 30, 10);
+		// Hoofd
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Brown), 32 - 5, 32 - 7.5, 15, 15);
+
+
+	}
+	virtual bool DenkNa()
 	{
 		int mx, my;
 		/* Vraag waar de muis is, dit wordt ingevuld in mx en my */
 		WaarIsDeMuis(mx, my);
-		
-		/* bepaal welke kant we op moeten kijken */
+
+		/* laat de zombie naar de muis kijken */
+		kx = mx;
+		ky = my;
+
+		/* bepaal welke kant we op moeten lopen */
 		float dx = mx - sx;
 		float dy = my - sy;
 		float n = sqrt(dx * dx + dy * dy);
 
+		/* als de zombie dicht bij de muis komt, wordt hij weggegooid */
 		if (n < 32)
 			return false;
 
@@ -257,12 +305,73 @@ struct Sprite
 
 		return true;
 	}
+
 };
 
-float AfstandTussenSprites(Sprite *sprite1, Sprite *sprite2)
+
+struct Creeper : public Sprite
 {
-	return sqrtf(pow(sprite1->sx - sprite2->sx, 2) + pow(sprite1->sy - sprite2->sy, 2));
-}
+	/*
+		We houden een tijd bij voor een zombie, zodat we de voetjes kunnen laten bewegen
+	*/
+	float tijd = 0;
+	virtual void TekenDeSprite(Graphics *PenVoorPlaatje)
+	{
+		/*
+			Dan gaan we hier lekker tekenen
+		*/
+
+		/*
+			We doen er een beetje tijd bij, daarmee laten we de voetjes bewegen
+		*/
+		tijd += 0.3;
+		
+		/*
+			Maak alles zwart (doorzichtig)
+		*/
+		PenVoorPlaatje->Clear(Color::Black);
+		// Voetjes
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 20, 32 - 20 + 4 * sin(tijd), 10, 10);
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 20, 32 + 10 + 4 * cos(tijd), 10, 10);
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 + 10, 32 - 20 + 4 * cos(tijd), 10, 10);
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 + 10, 32 + 10 - 4 * sin(tijd), 10, 10);
+		// Lichaam
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 10, 32 - 10, 20, 20);
+	}
+	virtual bool DenkNa()
+	{
+		int mx, my;
+		/* Vraag waar de muis is, dit wordt ingevuld in mx en my */
+		WaarIsDeMuis(mx, my);
+
+		/* laat de zombie naar de muis kijken */
+		kx = mx;
+		ky = my;
+
+		/* bepaal welke kant we op moeten lopen */
+		float dx = mx - sx;
+		float dy = my - sy;
+		float n = sqrt(dx * dx + dy * dy);
+
+		/* als de zombie dicht bij de muis komt, wordt hij weggegooid */
+		if (n < 32)
+			return false;
+
+		dx /= n;
+		dy /= n;
+
+		/* Doe een stapje in de richting van de muis */
+		sx += dy;
+		sy -= dx;
+		/* Zet de Sprite op de plek die we net hebben bepaald */
+		BeweegSprite();
+		/* Teken de Sprite opnieuw, dat is nu niet nodig, maar dan kunnen we het even uitproberen */
+		NieuwPlaatje();
+
+		return true;
+	}
+
+};
 
 #include <math.h>
 #include <vector>
@@ -276,12 +385,18 @@ int main()
 	Sprite::Voorbereiding();
 
 	/*
-		Maak een sprite aan
+		Maak sprites aan
 	*/
-	std::vector<Sprite*> sprites;
 	for (int cx = 0; cx < 10; cx++)
 	{
-		Sprite *nieuwe_sprite = new Sprite;
+		Sprite *nieuwe_sprite = new Creeper;
+		nieuwe_sprite->sx = rand() & 1023;
+		nieuwe_sprite->sy = rand() & 1023;
+		sprites.push_back(nieuwe_sprite);
+	}
+	for (int cx = 0; cx < 10; cx++)
+	{
+		Sprite *nieuwe_sprite = new Zombie;
 		nieuwe_sprite->sx = rand() & 1023;
 		nieuwe_sprite->sy = rand() & 1023;
 		sprites.push_back(nieuwe_sprite);
