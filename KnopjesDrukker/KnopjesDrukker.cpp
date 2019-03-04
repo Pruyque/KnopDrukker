@@ -8,6 +8,18 @@
 
 using namespace Gdiplus;
 
+void WaarIsDeMuis(int &x, int &y)
+/*
+	Hiermee kunnen we vragen waar de muis is.
+*/
+{
+	POINT p;
+	GetCursorPos(&p);
+	x = p.x;
+	y = p.y;
+}
+
+
 #pragma comment(lib, "gdiplus")
 struct Sprite
 	/* Dit wordt onze sprite
@@ -78,6 +90,61 @@ struct Sprite
 	}
 	float sx, sy;
 	float tijd = 0;
+	virtual void TekenDeSprite(Graphics *PenVoorVelletje)
+	{
+		/*
+			We maken zelf nog een plaatje aan, daar gaan we dan op tekenen.
+			Als we klaar zijn met tekenen, kopieeren we hem naar het velletje
+			dat we van Windows hebben gekregen.
+			Als je rechtstreeks op het velletje van Windows tekent, teken je
+			op het beeldscherm en zie je dingen knipperen...
+		*/
+		Bitmap plaatje(64, 64);
+		Graphics *PenVoorPlaatje = Graphics::FromImage(&plaatje);
+
+
+		/*
+			Dan gaan we hier lekker tekenen
+		*/
+
+		/*
+			Eerst zorgen we er voor dat het plaatje zo gedraaid gaat worden
+			dat we naar de muis kijken
+		*/
+		PenVoorPlaatje->TranslateTransform(32, 32);
+		int mx, my;
+		WaarIsDeMuis(mx, my);
+		float Hoek = atan2(my - sy, mx - sx);
+		PenVoorPlaatje->RotateTransform(180 * Hoek / 3.141592653);
+		PenVoorPlaatje->TranslateTransform(-32, -32);
+
+		/*
+			We doen er een beetje tijd bij, daarmee laten we de voetjes bewegen
+		*/
+		tijd += 0.1;
+
+		/*
+			Maak alles zwart (doorzichtig)
+		*/
+		PenVoorPlaatje->Clear(Color::Black);
+		// Voetjes
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Blue), 32 - 5 + 5 * sin(tijd), 32 - 10, 10, 10);
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Blue), 32 - 5 - 5 * sin(tijd), 32, 10, 10);
+		// Lichaam
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 5, 32 - 10, 10, 20);
+		// Armen
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 5, 32 - 20, 30, 10);
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 5, 32 + 10, 30, 10);
+		// Hoofd
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Brown), 32 - 5, 32 - 7.5, 15, 15);
+
+		/*
+			Hier kopieren we het plaatje naar het velletje
+		*/
+		PenVoorVelletje->DrawImage(&plaatje, 0, 0);
+		delete PenVoorPlaatje;
+
+	}
 	void WindowsBerichtje(UINT Msg, WPARAM wParam, LPARAM lParam)
 	/*
 		Hier komen de berichtjes van Windows voor deze sprite binnen
@@ -98,58 +165,7 @@ struct Sprite
 			*/
 			HDC velletje = BeginPaint(hWnd, &paint);
 			Graphics *PenVoorVelletje = Graphics::FromHDC(velletje);
-
-			/*
-				We maken zelf nog een plaatje aan, daar gaan we dan op tekenen.
-				Als we klaar zijn met tekenen, kopieeren we hem naar het velletje
-				dat we van Windows hebben gekregen.
-				Als je rechtstreeks op het velletje van Windows tekent, teken je
-				op het beeldscherm en zie je dingen knipperen...
-			*/
-			Bitmap plaatje (256, 256);
-			Graphics *PenVoorPlaatje = Graphics::FromImage(&plaatje);
-			
-
-			/*
-				Dan gaan we hier lekker tekenen
-			*/
-
-			/* 
-				Eerst zorgen we er voor dat het plaatje zo gedraaid gaat worden
-				dat we naar de muis kijken
-			*/
-			PenVoorPlaatje->TranslateTransform(128, 128);
-			int mx, my;
-			WaarIsDeMuis(mx, my);
-			float Hoek = atan2(my - sy- 128, mx - sx - 128);
-			PenVoorPlaatje->RotateTransform(180 * Hoek / 3.141592653);
-			PenVoorPlaatje->TranslateTransform(-128, -128);
-
-			/*
-				We doen er een beetje tijd bij, daarmee laten we de voetjes bewegen
-			*/
-			tijd += 0.1;
-
-			/*
-				Maak alles zwart (doorzichtig)
-			*/
-			PenVoorPlaatje->Clear(Color::Black);
-			// Voetjes
-			PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Blue), 128 - 5 + 5 * sin(tijd), 128 - 10, 10, 10);
-			PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Blue), 128 - 5 - 5 * sin(tijd), 128, 10, 10);
-			// Lichaam
-			PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 128 - 5, 128 - 10, 10, 20);
-			// Armen
-			PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 128 - 5, 128 - 20, 30, 10);
-			PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 128 - 5, 128 + 10, 30, 10);
-			// Hoofd
-			PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Brown), 128 - 5, 128 - 7.5, 15, 15);
-
-			/*
-				Hier kopieren we het plaatje naar het velletje
-			*/
-			PenVoorVelletje->DrawImage(&plaatje, 0, 0);
-
+			TekenDeSprite(PenVoorVelletje); // Teken de sprite met de pen voor het velletje
 			/*
 				Vertel Windows dat we klaar zijn
 			*/
@@ -159,7 +175,7 @@ struct Sprite
 				En ruim de pennen die we gemaakt hebben op
 			*/
 			delete PenVoorVelletje;
-			delete PenVoorPlaatje;
+
 			break;
 		}
 	}
@@ -173,10 +189,10 @@ struct Sprite
 			sla de naam op in hWnd
 		*/
 		hWnd = CreateWindowEx(
-			WS_EX_LAYERED|WS_EX_TOPMOST, L"DoorzichtigSchermKlasse",
+			WS_EX_LAYERED|WS_EX_TOPMOST|WS_EX_TOOLWINDOW, L"DoorzichtigSchermKlasse",
 			L"DoorzichtigScherm",
-			WS_VISIBLE | WS_POPUP,
-			0, 0, 256, 256, nullptr, nullptr, nullptr, this);
+			WS_VISIBLE|WS_POPUP,
+			0, 0, 64, 64, nullptr, nullptr, nullptr, this);
 
 		/*
 			We hebben een doorzichtig scherm gevraagd,
@@ -185,12 +201,20 @@ struct Sprite
 		*/
 		SetLayeredWindowAttributes(hWnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
 	}
-	void BeweegSprite(int x, int y)
+	~Sprite()
+		/* Dit gaan we doen als we een sprite weggooien */
+	{
+		/* Als de sprite weggegooid word, kan het schermpje ook weg */
+		DestroyWindow(hWnd);
+
+		/* Opruimen na de klus is net zo belangrijk als de klus zelf... */
+	}
+	void BeweegSprite()
 	/*
 		Hiermee kunnen we de Sprite verplaatsen
 	*/
 	{
-		MoveWindow(hWnd, x, y, 256, 256, TRUE);
+		MoveWindow(hWnd, sx - 32, sy - 32, 64, 64, TRUE);
 	}
 	void NieuwPlaatje()
 	/*
@@ -201,29 +225,24 @@ struct Sprite
 	{
 		InvalidateRect(hWnd, nullptr, FALSE);
 	}
-	static void WaarIsDeMuis(int &x, int &y)
+	virtual bool DenkNa()
 	/*
-		Hiermee kunnen we vragen waar de muis is.
-	*/
-	{
-		POINT p;
-		GetCursorPos(&p);
-		x = p.x;
-		y = p.y;
-	}
-	void DenkNa()
-	/*
-		Laat hier je Sprite nadenken en bewegen
+		Laat hier je Sprite nadenken en bewegen.
+		Geef 'true' terug als deze sprite moet blijven bestaan.
+		Als je 'false' terug geeft, wordt-ie weggegooid
 	*/
 	{
 		int mx, my;
 		/* Vraag waar de muis is, dit wordt ingevuld in mx en my */
-		Sprite::WaarIsDeMuis(mx, my);
+		WaarIsDeMuis(mx, my);
 		
 		/* bepaal welke kant we op moeten kijken */
-		float dx = mx - sx - 128;
-		float dy = my - sy - 128;
+		float dx = mx - sx;
+		float dy = my - sy;
 		float n = sqrt(dx * dx + dy * dy);
+
+		if (n < 32)
+			return false;
 
 		dx /= n;
 		dy /= n;
@@ -232,14 +251,21 @@ struct Sprite
 		sx += dx;
 		sy += dy;
 		/* Zet de Sprite op de plek die we net hebben bepaald */
-		BeweegSprite(sx, sy);
+		BeweegSprite();
 		/* Teken de Sprite opnieuw, dat is nu niet nodig, maar dan kunnen we het even uitproberen */
 		NieuwPlaatje();
 
+		return true;
 	}
 };
+
+float AfstandTussenSprites(Sprite *sprite1, Sprite *sprite2)
+{
+	return sqrtf(pow(sprite1->sx - sprite2->sx, 2) + pow(sprite1->sy - sprite2->sy, 2));
+}
+
 #include <math.h>
-#include <list>
+#include <vector>
 
 int main()
 {
@@ -252,7 +278,7 @@ int main()
 	/*
 		Maak een sprite aan
 	*/
-	std::list<Sprite*> sprites;
+	std::vector<Sprite*> sprites;
 	for (int cx = 0; cx < 10; cx++)
 	{
 		Sprite *nieuwe_sprite = new Sprite;
@@ -275,12 +301,36 @@ int main()
 			DispatchMessage(&msg);
 		}
 
-		for (Sprite *sprite : sprites)
+		for (std::vector<Sprite *>::iterator sprite = sprites.begin(); sprite != sprites.end(); sprite ++)
 			/* Doe voor alle sprites */
 		{
-			sprite->DenkNa();
+			if (!(*sprite)->DenkNa())
+			{
+				delete *sprite;
+				sprite = sprites.erase(sprite);
+				if (sprite == sprites.end())
+					break;
+			}
 		}
+
+		/* Als de sprites te dicht bij elkaar komen, moeten ze elkaar weg duwen */
+		for (Sprite *sprite1: sprites)
+			for (Sprite *sprite2: sprites)
+				if (sprite1 != sprite2)
+				{
+					float Afstand = AfstandTussenSprites(sprite1, sprite2);
+					if (Afstand < 64)
+					{
+						sprite2->sx = sprite1->sx + 64 * (sprite2->sx - sprite1->sx) / Afstand;
+						sprite2->sy = sprite1->sy + 64 * (sprite2->sy - sprite1->sy) / Afstand;
+					}
+				}
 		Sleep(50);
+		if (sprites.size() == 0)
+			/* Als er geen sprites meer over zijn
+				gaan we uit het loopje
+				*/
+			break;
 	}
 	/*
 		Aan het eind van ons programma, moeten we netjes onze zooi opruimen
@@ -288,6 +338,9 @@ int main()
 	for (Sprite *sprite : sprites)
 		delete sprite;
 
+	/*
+		Einde van het programma
+	*/
     return 0;
 }
 
