@@ -5,6 +5,7 @@
 #include <Windows.h>
 #include <math.h>
 #include <gdiplus.h>
+#include <vector>
 
 using namespace Gdiplus;
 
@@ -261,8 +262,8 @@ struct Zombie : public Sprite
 		*/
 		PenVoorPlaatje->Clear(Color::Black);
 		// Voetjes
-		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Blue), 32 - 5 + 5 * sin(tijd), 32 - 10, 10, 10);
-		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Blue), 32 - 5 - 5 * sin(tijd), 32, 10, 10);
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Blue), 32 - 5 + (int)(5 * sin(tijd)), 32 - 10, 10, 10);
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Blue), 32 - 5 - (int)(5 * sin(tijd)), 32, 10, 10);
 		// Lichaam
 		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 5, 32 - 10, 10, 20);
 		// Armen
@@ -331,10 +332,10 @@ struct Creeper : public Sprite
 		*/
 		PenVoorPlaatje->Clear(Color::Black);
 		// Voetjes
-		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 20, 32 - 20 + 4 * sin(tijd), 10, 10);
-		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 20, 32 + 10 + 4 * cos(tijd), 10, 10);
-		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 + 10, 32 - 20 + 4 * cos(tijd), 10, 10);
-		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 + 10, 32 + 10 - 4 * sin(tijd), 10, 10);
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 20, 32 - 20 + (int)(4 * sin(tijd)), 10, 10);
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 20, 32 + 10 + (int)(4 * cos(tijd)), 10, 10);
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 + 10, 32 - 20 + (int)(4 * cos(tijd)), 10, 10);
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 + 10, 32 + 10 - (int)(4 * sin(tijd)), 10, 10);
 		// Lichaam
 		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 10, 32 - 10, 20, 20);
 	}
@@ -361,8 +362,8 @@ struct Creeper : public Sprite
 		dy /= n;
 
 		/* Doe een stapje in de richting van de muis */
-		sx += dy;
-		sy -= dx;
+		sx += dy * 2;
+		sy -= dx * 2;
 		/* Zet de Sprite op de plek die we net hebben bepaald */
 		BeweegSprite();
 		/* Teken de Sprite opnieuw, dat is nu niet nodig, maar dan kunnen we het even uitproberen */
@@ -373,8 +374,6 @@ struct Creeper : public Sprite
 
 };
 
-#include <math.h>
-#include <vector>
 
 int main()
 {
