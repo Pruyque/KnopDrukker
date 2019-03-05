@@ -3,9 +3,12 @@
 
 #include "stdafx.h"
 #include <Windows.h>
+#define _USE_MATH_DEFINES
 #include <math.h>
 #include <gdiplus.h>
 #include <vector>
+
+
 
 using namespace Gdiplus;
 
@@ -96,6 +99,7 @@ struct Sprite
 		sx en sy zijn de positie van de sprite
 	*/
 	float sx, sy;
+	float hoek = 0;
 	/*
 		kx en ky zijn het punt waar de sprite naar moet kijken
 	*/
@@ -136,8 +140,7 @@ struct Sprite
 				dat we naar de muis kijken
 			*/
 			PenVoorPlaatje->TranslateTransform(32, 32);
-			float Hoek = atan2(ky - sy, kx - sx);
-			PenVoorPlaatje->RotateTransform(180 * Hoek / 3.141592653);
+			PenVoorPlaatje->RotateTransform(hoek);
 			PenVoorPlaatje->TranslateTransform(-32, -32);
 
 
@@ -208,7 +211,25 @@ struct Sprite
 	{
 		InvalidateRect(hWnd, nullptr, FALSE);
 	}
+	void KijkNaar(float x, float y)
+	/* 
+		Draai de sprite zodat hij naar dit punt kijkt
+	*/
+	{
+		hoek = atan2f(y - sy, x - sx) * 180 / M_PI;
+	}
 
+	void StapVooruit(float stapgrootte)
+	/*
+		Doe een stap in de richting waarin de sprite kijkt
+	*/
+	{
+		float dx = cosf(M_PI * hoek / 180.f);
+		float dy = sinf(M_PI * hoek / 180.f);
+
+		sx += stapgrootte * dx;
+		sy += stapgrootte * dy;
+	}
 
 	/* 
 		De volgende functies, met = 0 erachter betekenen dat alle sprites
@@ -281,10 +302,9 @@ struct Zombie : public Sprite
 		WaarIsDeMuis(mx, my);
 
 		/* laat de zombie naar de muis kijken */
-		kx = mx;
-		ky = my;
+		KijkNaar(mx, my);
 
-		/* bepaal welke kant we op moeten lopen */
+		/* bepaal hoe ver we van de muis zijn */
 		float dx = mx - sx;
 		float dy = my - sy;
 		float n = sqrt(dx * dx + dy * dy);
@@ -293,12 +313,8 @@ struct Zombie : public Sprite
 		if (n < 32)
 			return false;
 
-		dx /= n;
-		dy /= n;
-
 		/* Doe een stapje in de richting van de muis */
-		sx += dx;
-		sy += dy;
+		StapVooruit(1);
 		/* Zet de Sprite op de plek die we net hebben bepaald */
 		BeweegSprite();
 		/* Teken de Sprite opnieuw, dat is nu niet nodig, maar dan kunnen we het even uitproberen */
@@ -332,10 +348,10 @@ struct Creeper : public Sprite
 		*/
 		PenVoorPlaatje->Clear(Color::Black);
 		// Voetjes
-		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 20, 32 - 20 + (int)(4 * sin(tijd)), 10, 10);
-		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 20, 32 + 10 + (int)(4 * cos(tijd)), 10, 10);
-		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 + 10, 32 - 20 + (int)(4 * cos(tijd)), 10, 10);
-		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 + 10, 32 + 10 - (int)(4 * sin(tijd)), 10, 10);
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 20 + (int)(4 * sin(tijd)), 32 - 20, 10, 10);
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 20 + (int)(4 * cos(tijd)), 32 + 10, 10, 10);
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 + 10 + (int)(4 * cos(tijd)), 32 - 20 , 10, 10);
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 + 10 - (int)(4 * sin(tijd)), 32 + 10, 10, 10);
 		// Lichaam
 		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 10, 32 - 10, 20, 20);
 	}
@@ -345,11 +361,11 @@ struct Creeper : public Sprite
 		/* Vraag waar de muis is, dit wordt ingevuld in mx en my */
 		WaarIsDeMuis(mx, my);
 
-		/* laat de zombie naar de muis kijken */
-		kx = mx;
-		ky = my;
+		/* laat de creeper rondjes om de muis lopen */
+		KijkNaar(mx, my);
+		hoek += 90;
 
-		/* bepaal welke kant we op moeten lopen */
+		/* bepaal hoe ver we van de muis zijn */
 		float dx = mx - sx;
 		float dy = my - sy;
 		float n = sqrt(dx * dx + dy * dy);
@@ -362,8 +378,7 @@ struct Creeper : public Sprite
 		dy /= n;
 
 		/* Doe een stapje in de richting van de muis */
-		sx += dy * 2;
-		sy -= dx * 2;
+		StapVooruit(3.f);
 		/* Zet de Sprite op de plek die we net hebben bepaald */
 		BeweegSprite();
 		/* Teken de Sprite opnieuw, dat is nu niet nodig, maar dan kunnen we het even uitproberen */
