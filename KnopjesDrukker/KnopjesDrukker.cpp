@@ -8,7 +8,7 @@
 #include <gdiplus.h>
 #include <vector>
 
-
+#define M_PIf (float)M_PI
 
 using namespace Gdiplus;
 
@@ -200,7 +200,7 @@ struct Sprite
 		Hiermee kunnen we de Sprite verplaatsen
 	*/
 	{
-		MoveWindow(hWnd, sx - 32, sy - 32, 64, 64, TRUE);
+		MoveWindow(hWnd, (int)(sx - 32), (int)(sy - 32), 64, 64, TRUE);
 	}
 	void NieuwPlaatje()
 	/*
@@ -216,7 +216,7 @@ struct Sprite
 		Draai de sprite zodat hij naar dit punt kijkt
 	*/
 	{
-		hoek = atan2f(y - sy, x - sx) * 180 / M_PI;
+		hoek = atan2f(y - sy, x - sx) * 180 / M_PIf;
 	}
 
 	void StapVooruit(float stapgrootte)
@@ -224,8 +224,8 @@ struct Sprite
 		Doe een stap in de richting waarin de sprite kijkt
 	*/
 	{
-		float dx = cosf(M_PI * hoek / 180.f);
-		float dy = sinf(M_PI * hoek / 180.f);
+		float dx = cosf(M_PIf * hoek / 180.f);
+		float dy = sinf(M_PIf * hoek / 180.f);
 
 		sx += stapgrootte * dx;
 		sy += stapgrootte * dy;
@@ -276,7 +276,7 @@ struct Zombie : public Sprite
 		/*
 			We doen er een beetje tijd bij, daarmee laten we de voetjes bewegen
 		*/
-		tijd += 0.1;
+		tijd += 0.1f;
 
 		/*
 			Maak alles zwart (doorzichtig)
@@ -291,7 +291,7 @@ struct Zombie : public Sprite
 		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 5, 32 - 20, 30, 10);
 		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Green), 32 - 5, 32 + 10, 30, 10);
 		// Hoofd
-		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Brown), 32 - 5, 32 - 7.5, 15, 15);
+		PenVoorPlaatje->FillRectangle(&SolidBrush(Color::Brown), 32 - 5, 32 - 7, 15, 15);
 
 
 	}
@@ -302,7 +302,7 @@ struct Zombie : public Sprite
 		WaarIsDeMuis(mx, my);
 
 		/* laat de zombie naar de muis kijken */
-		KijkNaar(mx, my);
+		KijkNaar((float)mx, (float)my);
 
 		/* bepaal hoe ver we van de muis zijn */
 		float dx = mx - sx;
@@ -341,7 +341,7 @@ struct Creeper : public Sprite
 		/*
 			We doen er een beetje tijd bij, daarmee laten we de voetjes bewegen
 		*/
-		tijd += 0.3;
+		tijd += 0.3f;
 		
 		/*
 			Maak alles zwart (doorzichtig)
@@ -362,8 +362,8 @@ struct Creeper : public Sprite
 		WaarIsDeMuis(mx, my);
 
 		/* laat de creeper rondjes om de muis lopen */
-		KijkNaar(mx, my);
-		hoek += 90;
+		KijkNaar((float)mx, (float)my);
+		hoek += 90.f;
 
 		/* bepaal hoe ver we van de muis zijn */
 		float dx = mx - sx;
@@ -404,15 +404,15 @@ int main()
 	for (int cx = 0; cx < 10; cx++)
 	{
 		Sprite *nieuwe_sprite = new Creeper;
-		nieuwe_sprite->sx = rand() & 1023;
-		nieuwe_sprite->sy = rand() & 1023;
+		nieuwe_sprite->sx = rand() % 1023;
+		nieuwe_sprite->sy = rand() % 1023;
 		sprites.push_back(nieuwe_sprite);
 	}
 	for (int cx = 0; cx < 10; cx++)
 	{
 		Sprite *nieuwe_sprite = new Zombie;
-		nieuwe_sprite->sx = rand() & 1023;
-		nieuwe_sprite->sy = rand() & 1023;
+		nieuwe_sprite->sx = rand() % 1023;
+		nieuwe_sprite->sy = rand() % 1023;
 		sprites.push_back(nieuwe_sprite);
 	}
 
